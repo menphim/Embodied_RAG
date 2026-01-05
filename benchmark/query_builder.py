@@ -4,6 +4,7 @@ import json
 import random
 import os
 import ipdb
+from embodied_nav.config import Config
 
 gml_file_path = './semantic_graphs/enhanced_semantic_graph_semantic_graph_Building99_20241118_160313.gml'
 
@@ -14,8 +15,49 @@ for node, data in graph.nodes(data=True):
     if 'level' in data and data['level']:
         contexts.append(data['summary'])
 
-api_key = os.getenv("OPENAI_API_KEY")
-client = openai.OpenAI(api_key=api_key)
+def _normalize_base_url(api_base):
+    base_url = (api_base or "").rstrip("/")
+    if not base_url:
+        return None
+    if not base_url.endswith("/v1"):
+        base_url = base_url + "/v1"
+    return base_url
+
+def _openrouter_headers(settings):
+    headers = {}
+    app_url = settings.get("app_url", "").strip()
+    app_name = settings.get("app_name", "").strip()
+    if app_url:
+        headers["HTTP-Referer"] = app_url
+    if app_name:
+        headers["X-Title"] = app_name
+    return headers
+
+def _build_client():
+    provider = Config.LLM.get("provider")
+    vllm_settings = Config.LLM.get("vllm_settings", {})
+    openrouter_settings = Config.LLM.get("openrouter_settings", {})
+    if provider == "vllm" or (provider is None and vllm_settings.get("enabled")):
+        base_url = _normalize_base_url(vllm_settings.get("api_base"))
+        return openai.OpenAI(
+            base_url=base_url,
+            api_key=vllm_settings.get("api_key"),
+        )
+    if provider == "openrouter":
+        base_url = _normalize_base_url(
+            openrouter_settings.get("api_base", "https://openrouter.ai/api")
+        )
+        api_key_env = openrouter_settings.get("api_key_env", "OPENROUTER_API_KEY")
+        api_key = os.getenv(api_key_env)
+        headers = _openrouter_headers(openrouter_settings)
+        client_kwargs = {"base_url": base_url, "api_key": api_key}
+        if headers:
+            client_kwargs["default_headers"] = headers
+        return openai.OpenAI(**client_kwargs)
+    return openai.OpenAI()
+
+client = _build_client()
+model_name = Config.LLM["model"]
 
 system_message = {
     "role": "system",
@@ -84,7 +126,7 @@ with open("benchmark/data/query.jsonl", 'a') as outfile:
 
         try:
             response = client.chat.completions.create(
-                model="chatgpt-4o-latest",
+                model=model_name,
                 messages=messages
             )
 

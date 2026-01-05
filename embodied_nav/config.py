@@ -28,11 +28,19 @@ class Config:
 
     # LLM Parameters
     LLM = {
-        'model': 'gpt-4o',
+        'provider': 'openrouter',  # openai, openrouter, vllm
+        'model': 'openai/gpt-4o',
+        'embedding_model': None,
         'temperature': 0.7,
         'max_tokens': 500,
+        'openrouter_settings': {
+            'api_base': 'https://openrouter.ai/api',
+            'api_key_env': 'OPENROUTER_API_KEY',
+            'app_name': 'Embodied_RAG',
+            'app_url': ''
+        },
         'vllm_settings': {
-            'enabled': True,
+            'enabled': False,
             'model': 'meta-llama/Llama-3.2-3B-Instruct',
             'api_key': 'test-vllm',
             'api_base': 'http://localhost:8000',
@@ -100,4 +108,3 @@ class Config:
         'max_update_timeout': 60,      # maximum seconds to wait for final update
         'min_objects_for_update': 5    # minimum number of objects needed before updating
     }
-

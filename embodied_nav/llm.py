@@ -6,19 +6,53 @@ import traceback
 
 class LLMInterface:
     def __init__(self):
+        self.provider = Config.LLM.get('provider')
         self.model = Config.LLM['model']
         self.temperature = Config.LLM['temperature']
         self.max_tokens = Config.LLM['max_tokens']
         self.vllm_settings = Config.LLM['vllm_settings']
+        self.openrouter_settings = Config.LLM.get('openrouter_settings', {})
         
-        if self.vllm_settings['enabled']:
-            self.model = self.vllm_settings['model']
-            self.client = AsyncOpenAI(
-                base_url=self.vllm_settings['api_base'] + "/v1",
-                api_key=self.vllm_settings['api_key'],
+        self.client = self._build_client()
+
+    def _normalize_base_url(self, api_base):
+        base_url = (api_base or "").rstrip("/")
+        if not base_url:
+            return None
+        if not base_url.endswith("/v1"):
+            base_url = base_url + "/v1"
+        return base_url
+
+    def _openrouter_headers(self):
+        headers = {}
+        app_url = self.openrouter_settings.get("app_url", "").strip()
+        app_name = self.openrouter_settings.get("app_name", "").strip()
+        if app_url:
+            headers["HTTP-Referer"] = app_url
+        if app_name:
+            headers["X-Title"] = app_name
+        return headers
+
+    def _build_client(self):
+        if self.provider == "vllm" or (self.provider is None and self.vllm_settings.get("enabled")):
+            self.model = self.vllm_settings["model"]
+            base_url = self._normalize_base_url(self.vllm_settings.get("api_base"))
+            return AsyncOpenAI(
+                base_url=base_url,
+                api_key=self.vllm_settings.get("api_key"),
             )
-        else:
-            self.client = AsyncOpenAI()
+        if self.provider == "openrouter":
+            base_url = self._normalize_base_url(
+                self.openrouter_settings.get("api_base", "https://openrouter.ai/api")
+            )
+            api_key_env = self.openrouter_settings.get("api_key_env", "OPENROUTER_API_KEY")
+            api_key = os.getenv(api_key_env)
+            headers = self._openrouter_headers()
+            client_kwargs = {"base_url": base_url, "api_key": api_key}
+            if headers:
+                client_kwargs["default_headers"] = headers
+            return AsyncOpenAI(**client_kwargs)
+        return AsyncOpenAI()
 
     async def generate_response(self, prompt, system_prompt=None):
         """Base method for generating responses from the LLM"""

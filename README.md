@@ -17,7 +17,7 @@
 **Prerequisites:**
 - Python >= 3.9
 - AirSim simulator (Docker setup below)
-- OpenAI API key for LLM functionality
+- OpenRouter API key for LLM functionality
 
 1. Clone the repository:
 ```bash
@@ -27,14 +27,16 @@ pip install -r requirements.txt
 
 ```
 
-2. Set your OpenAI API key:
+2. Set your OpenRouter API key:
 ```bash
-export OPENAI_API_KEY=your_api_key_here
+export OPENROUTER_API_KEY=your_api_key_here
 ```
 
 3. Configure parameters (optional):
 
    Edit `embodied_nav/config.py` to adjust thresholds:
+   - `Config.LLM['provider']` (openrouter, openai, vllm)
+   - `Config.LLM['model']` and `Config.LLM['embedding_model']`
 
 4. Running AirSim with Docker:
 ```bash
@@ -136,4 +138,3 @@ If you like our work, please cite:
   journal={arXiv preprint arXiv:2409.18313},
   year={2024}
 }
-

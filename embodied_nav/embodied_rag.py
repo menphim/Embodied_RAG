@@ -28,7 +28,11 @@ class EmbodiedRAG:
         self.working_dir = working_dir
         self.logger = logging.getLogger('experiment')
         self.cache_file = os.path.join(working_dir, "llm_response_cache.json")
-        self.client = AsyncOpenAI()
+        self.provider = Config.LLM.get('provider')
+        self.vllm_settings = Config.LLM['vllm_settings']
+        self.openrouter_settings = Config.LLM.get('openrouter_settings', {})
+        self.embedding_model = Config.LLM.get('embedding_model') or Config.LLM['model']
+        self.client = self._build_openai_client()
         
         if retrieval_method == RetrievalMethod.SEMANTIC:
             from .ollama_llm import OllamaInterface
@@ -44,6 +48,44 @@ class EmbodiedRAG:
         self.graph = None
         self._load_cache()
 
+    def _normalize_base_url(self, api_base):
+        base_url = (api_base or "").rstrip("/")
+        if not base_url:
+            return None
+        if not base_url.endswith("/v1"):
+            base_url = base_url + "/v1"
+        return base_url
+
+    def _openrouter_headers(self):
+        headers = {}
+        app_url = self.openrouter_settings.get("app_url", "").strip()
+        app_name = self.openrouter_settings.get("app_name", "").strip()
+        if app_url:
+            headers["HTTP-Referer"] = app_url
+        if app_name:
+            headers["X-Title"] = app_name
+        return headers
+
+    def _build_openai_client(self):
+        if self.provider == "vllm" or (self.provider is None and self.vllm_settings.get("enabled")):
+            base_url = self._normalize_base_url(self.vllm_settings.get("api_base"))
+            return AsyncOpenAI(
+                base_url=base_url,
+                api_key=self.vllm_settings.get("api_key"),
+            )
+        if self.provider == "openrouter":
+            base_url = self._normalize_base_url(
+                self.openrouter_settings.get("api_base", "https://openrouter.ai/api")
+            )
+            api_key_env = self.openrouter_settings.get("api_key_env", "OPENROUTER_API_KEY")
+            api_key = os.getenv(api_key_env)
+            headers = self._openrouter_headers()
+            client_kwargs = {"base_url": base_url, "api_key": api_key}
+            if headers:
+                client_kwargs["default_headers"] = headers
+            return AsyncOpenAI(**client_kwargs)
+        return AsyncOpenAI()
+
     def _load_cache(self):
         """Load LLM response cache from disk"""
         try:
@@ -54,9 +96,9 @@ class EmbodiedRAG:
             os.makedirs(self.working_dir, exist_ok=True)
 
     async def embedding_func(self, texts):
-        """Generate embeddings using OpenAI API"""
+        """Generate embeddings using an OpenAI-compatible API"""
         response = await self.client.embeddings.create(
-            model="text-embedding-ada-002",
+            model=self.embedding_model,
             input=texts
         )
         return [np.array(embedding.embedding) for embedding in response.data]
