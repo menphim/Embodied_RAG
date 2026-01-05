@@ -23,8 +23,28 @@
 ```bash
 git clone git@github.com:quanting-xie/Embodied_RAG.git
 cd Embodied_RAG
-pip install -r requirements.txt
+```
 
+Install dependencies (uv recommended):
+```bash
+uv venv .venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
+```
+For offline checks (no AirSim, lighter install):
+```bash
+uv pip install -r requirements-core.txt
+```
+If uv cache permissions fail, use:
+```bash
+UV_CACHE_DIR=./.uv-cache uv pip install -r requirements.txt
+```
+
+Or with pip:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
 2. Set your OpenRouter API key:

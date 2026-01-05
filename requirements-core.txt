@@ -1,0 +1,7 @@
+# Minimal dependencies for offline graph inspection and retrieval (no AirSim).
+networkx>=3.0.0
+numpy>=1.20.0
+scipy>=1.9.0
+tqdm>=4.65.0
+scikit-learn>=1.0.0
+openai>=1.0.0
