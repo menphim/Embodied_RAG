@@ -30,7 +30,7 @@ class Config:
     LLM = {
         'provider': 'openrouter',  # openai, openrouter, vllm
         'model': 'openai/gpt-4o',
-        'embedding_model': None,
+        'embedding_model': 'openai/text-embedding-ada-002',
         'temperature': 0.7,
         'max_tokens': 500,
         'openrouter_settings': {
