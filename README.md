@@ -31,6 +31,11 @@ pip install -r requirements.txt
 ```bash
 export OPENROUTER_API_KEY=your_api_key_here
 ```
+Optional: copy `.env.example` to `.env` and enable local git hooks to block accidental key commits:
+```bash
+cp .env.example .env
+git config core.hooksPath .githooks
+```
 
 3. Configure parameters (optional):
 
