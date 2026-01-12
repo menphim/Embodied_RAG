@@ -40,9 +40,25 @@ async def generate_semantic_forest_from_graph(
     """
     print("\n=== Starting Semantic Forest Generation ===")
 
+    def convert_node_to_object(node, data):
+        """Convert node data to object format with position dict."""
+        obj = {'id': node}
+        for k, v in data.items():
+            if k == 'level':
+                continue
+            obj[k] = v
+        # Convert position_x/y/z to position dict for SpatialRelationshipExtractor
+        if 'position_x' in data and 'position_y' in data and 'position_z' in data:
+            obj['position'] = {
+                'x': data['position_x'],
+                'y': data['position_y'],
+                'z': data['position_z']
+            }
+        return obj
+
     # Get non-vehicle nodes (objects) for clustering
     objects = [
-        {'id': node, **{k: v for k, v in data.items() if k != 'level'}}
+        convert_node_to_object(node, data)
         for node, data in initial_graph.nodes(data=True)
         if data.get('type') not in ('drone', 'vehicle')
     ]
@@ -51,7 +67,7 @@ async def generate_semantic_forest_from_graph(
         # If no objects, use vehicle nodes for spatial clustering
         print("No object nodes found, using vehicle trajectory for clustering...")
         objects = [
-            {'id': node, **{k: v for k, v in data.items() if k != 'level'}}
+            convert_node_to_object(node, data)
             for node, data in initial_graph.nodes(data=True)
             if data.get('type') in ('drone', 'vehicle')
         ]
